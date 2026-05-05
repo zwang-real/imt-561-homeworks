@@ -274,7 +274,7 @@ registerSketch('sk3', function (p) {
 
     p.noStroke(); p.fill(40,80,140,150);
     p.textSize(11); p.textAlign(p.CENTER); p.textStyle(p.NORMAL);
-    p.text('点击并按住 → 海鸥在空中拼出当前时间', CANVAS_SIZE/2, CANVAS_SIZE-2);
+    p.text('Tap and hold → Seagulls spell out the current time in the sky', CANVAS_SIZE/2, CANVAS_SIZE-2);
 
     // ---- NEW: Custom crosshair cursor ----
     const mx = p.mouseX, my = p.mouseY;

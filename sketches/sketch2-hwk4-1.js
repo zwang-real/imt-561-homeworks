@@ -38,20 +38,22 @@ registerSketch('sk2', function (p) {
     labelFaint: '#aaa9a0'
   };
 
-  p.setup = function () {
-    // Creating an 800x800 canvas as per assignment limits
+p.setup = function () {
     p.createCanvas(800, 800);
     p.frameRate(60);
+    p.textFont('Arial, Helvetica, sans-serif');
+    
+    let cx = p.width / 2;
+    let cy = p.height / 2;
 
-  // ---  Initialize UI Elements ---
-    // Target Pace Slider (3 to 10 min/km)
+    // Repositioning UI to be centered under the watch
     paceSlider = p.createSlider(3, 10, 5, 0.1);
-    paceSlider.position(p.width / 2 - 190, p.height / 2 + 320);
-    paceSlider.size(200);
+    paceSlider.position(cx - 160, cy + 320); 
+    paceSlider.size(140);
 
     // Start/Pause Button
     toggleButton = p.createButton('▶  Start');
-    toggleButton.position(p.width / 2 + 40, p.height / 2 + 315);
+    toggleButton.position(cx + 20, cy + 315);
     toggleButton.style('background', '#1a1a18');
     toggleButton.style('color', '#fafaf7');
     toggleButton.style('padding', '8px 20px');
@@ -59,12 +61,18 @@ registerSketch('sk2', function (p) {
     toggleButton.style('cursor', 'pointer');
     toggleButton.mousePressed(toggleRun);
   };
+  
+p.draw = function () {
+    // 1. INITIALIZE COORDINATES FIRST
+    // Define these at the top so the 'running' block can access them
+    let cx = p.width / 2;
+    let cy = p.height / 2;
+    let dialCy = cy + DIAL_CY_OFF;
 
-  p.draw = function () {
-    // --- 3. Simulation Logic (Updates every frame) ---
+    // 2. SIMULATION LOGIC
     if (running) {
       elapsedMs = p.millis() - startMs;
-      const dt = p.deltaTime / 1000; // time change in seconds
+      const dt = p.deltaTime / 1000; 
       
       targetPace = paceSlider.value();
       // Smoothly transition actual pace toward target
@@ -81,50 +89,43 @@ registerSketch('sk2', function (p) {
       heartRate = p.constrain(p.round(baseHR + p.sin(hrPhase) * 4), 60, 195);
     }
 
-    // --- 4. Render Layers ---
+    // 3. RENDER LAYERS (Order: Bottom to Top)
     p.background(COL.bg); 
-    let cx = p.width / 2;
-    let cy = p.height / 2;
-    let dialCy = cy + DIAL_CY_OFF;
-
+    
     drawBackground(cx, cy);
     drawWatchBand(cx, cy);
     drawWatchCase(cx, cy);
     drawScreen(cx, cy);
+    
+    // Always draw these so the watch face isn't empty when paused
     drawClockTime(cx, dialCy - 44);
-    // Calculate angles based on distance progression (0 to 1.0 km)
+    drawPanels(cx, cy, dialCy); 
+    drawSliderLabel(cx - 160, cy + 310);
+
+    // 4. DIAL AND HANDS
     const elSec = elapsedMs / 1000;
     const expDist = (running || elapsedMs > 0) ? (elSec / (targetPace * 60)) % 1.0 : 0;
-    
     const actualAngle = angForDist(lapDist);
     const targetAngle = angForDist(expDist);
 
-    // Draw the static dial (ticks and labels)
     drawDial(cx, dialCy);
 
-    // Draw the interactive hands
-    // We use a clip to ensure hands stay within the screen area
+    // Clip and draw dynamic hands
     p.drawingContext.save();
     p.drawingContext.beginPath();
     rrPath(cx - CW + PAD, cy - CH + PAD, (CW - PAD) * 2, (CH - PAD) * 2, 26);
     p.drawingContext.clip();
     
-    // Actual Pace Hand (Thicker, Orange)
     drawHand(cx, dialCy, actualAngle, DIAL_R - 12, [220, 80, 30], 4.0);
-    // Target Pace Hand (Thinner, Blue)
     drawHand(cx, dialCy, targetAngle, DIAL_R - 12, [30, 120, 220], 2.2);
     
-    // Center pin of the watch hands
     p.fill(COL.text);
     p.noStroke();
     p.circle(cx, dialCy, 9);
     p.drawingContext.restore();
-
-    // Add a label for the slider
-    drawSliderLabel(cx - 190, cy + 310);
   };
 
-  // --- 5. New Helper Functions ---
+  // ---  New Helper Functions ---
   function toggleRun() {
     running = !running;
     if (running) {
@@ -333,5 +334,76 @@ registerSketch('sk2', function (p) {
     const ty = cy + p.sin(ang + p.PI) * 13;
     p.strokeWeight(sw * 0.5);
     p.line(cx, cy, tx, ty);
+  }
+
+  /**
+   * Draws the 4 rows of data panels below the dial
+   */
+  function drawPanels(cx, cy, dialCy) {
+    const innerW = (CW - PAD) * 2;
+    const pw = innerW - 16; // panel width
+    const px = cx - pw / 2;
+    const PANEL_GAP = 6;
+    const PH = 24; // panel height
+    const PGAP = 5; // panel gap
+    const top = dialCy + DIAL_R + PANEL_GAP;
+
+    // Row 1: Actual vs Target Pace
+    const apM = p.floor(actualPace);
+    const apS = p.nf(p.round((actualPace % 1) * 60), 2);
+    const tpM = p.floor(targetPace);
+    const tpS = p.nf(p.round((targetPace % 1) * 60), 2);
+
+    drawPanel(px, top, pw, PH, '● ACTUAL', `${apM}:${apS}`, '○ TARGET', `${tpM}:${tpS}`, [220, 80, 30]);
+
+    // Row 2: Heart Rate & Lap Distance
+    const hrColor = heartRate > 150 ? 'rgba(220,50,50,0.3)' : 'rgba(60,160,100,0.2)';
+    drawPanel(px, top + PH + PGAP, pw, PH, '♥ HEART', `${heartRate} bpm`, 'LAP DIST', `${p.nf(lapDist, 1, 2)} km`, hrColor);
+
+    // Row 3: Current Lap & Total Distance
+    drawPanel(px, top + (PH + PGAP) * 2, pw, PH, 'LAP', `${lapCount}`, 'TOTAL', `${p.nf(totalDist, 1, 2)} km`, 'rgba(0,0,0,0.1)');
+
+    // Row 4: Elapsed Time
+    drawPanel(px, top + (PH + PGAP) * 3, pw, PH, 'ELAPSED', fmtTime(elapsedMs), null, null, 'rgba(30,120,220,0.2)');
+  }
+
+  /**
+   * Reusable component for a data panel row
+   */
+  function drawPanel(x, y, w, h, lLab, lVal, rLab, rVal, accent) {
+    p.fill('rgba(0,0,0,0.03)');
+    p.stroke(accent);
+    p.strokeWeight(1);
+    p.rectMode(p.CORNER); // Ensure rect draws from corner for panels
+    p.rect(x, y, w, h, 5);
+
+    p.noStroke();
+    p.textSize(7);
+    p.fill(COL.labelFaint);
+    p.textAlign(p.LEFT, p.TOP);
+    p.text(lLab, x + 8, y + 4);
+
+    p.textSize(11);
+    p.fill(COL.text);
+    p.textStyle(p.BOLD);
+    p.text(lVal, x + 8, y + h - 4);
+
+    if (rLab) {
+      p.textSize(7);
+      p.fill(COL.labelFaint);
+      p.textAlign(p.RIGHT, p.TOP);
+      p.text(rLab, x + w - 8, y + 4);
+      p.textSize(11);
+      p.fill(COL.text);
+      p.text(rVal, x + w - 8, y + h - 4);
+    }
+    p.textStyle(p.NORMAL);
+  }
+
+  function fmtTime(ms) {
+    const s = p.floor(ms / 1000);
+    const m = p.floor(s / 60);
+    const sec = s % 60;
+    return p.nf(m, 2) + ':' + p.nf(sec, 2);
   }
 });

@@ -1,5 +1,5 @@
-// Design choice: 5 wave layers with varying opacity and speed create
-//               a sense of depth; waveOff advances each frame for motion
+// Design choice: deterministic ellipse scatter using index-based math
+//               gives consistent sand grain texture without random seed issues
 
 registerSketch('sk3', function (p) {
   const CANVAS_SIZE = 680;
@@ -40,6 +40,21 @@ registerSketch('sk3', function (p) {
       p.vertex(CANVAS_SIZE, CANVAS_SIZE);
       p.vertex(0, CANVAS_SIZE);
       p.endShape(p.CLOSE);
+    }
+
+    // ---- Beach ----
+    p.noStroke();
+    p.fill(215, 188, 145);
+    p.rect(0, OCEAN_H + 18, CANVAS_SIZE, CANVAS_SIZE - OCEAN_H - 18);
+
+    // Sand grain texture using deterministic positions
+    p.fill(195, 168, 125, 140);
+    for (let i = 0; i < 220; i++) {
+      p.ellipse(
+        (i * 139.7) % CANVAS_SIZE,
+        OCEAN_H + 20 + (i * 67.3) % (CANVAS_SIZE - OCEAN_H - 20),
+        3, 2
+      );
     }
 
     // Draw frame

@@ -1,5 +1,5 @@
-// Design choice: each gull steers toward a random target in the sky zone;
-//               M-shape wing drawn with beginShape encodes flapping via sin()
+// Design choice: minute (0-59) linearly maps to flock spread (300→70px),
+//               making the passage of each hour visible as a slow gathering
 
 registerSketch('sk3', function (p) {
   const CANVAS_SIZE = 680;
@@ -31,6 +31,10 @@ registerSketch('sk3', function (p) {
   };
 
   p.draw = function () {
+    const now     = new Date();
+    const mn      = now.getMinutes();
+    const cluster = mn / 59; // 0 = fully scattered, 1 = fully clustered
+
     // ---- Sky ----
     for (let y = 0; y < OCEAN_H; y++) {
       const t = y / OCEAN_H;
@@ -73,17 +77,20 @@ registerSketch('sk3', function (p) {
       );
     }
 
-    // ---- Seagulls: wander toward random targets ----
+    // ---- Seagulls: minute-based clustering ----
     for (let i = 0; i < gulls.length; i++) {
       const g  = gulls[i];
       const dx = g.tx - g.x;
       const dy = g.ty - g.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-      // Pick a new random target when close enough
       if (dist < 15) {
-        g.tx = p.random(40, CANVAS_SIZE - 40);
-        g.ty = p.random(15, OCEAN_H - 16);
+        // Spread shrinks as minute increases (scattered → clustered)
+        const spread = p.lerp(300, 70, cluster);
+        const cx = CANVAS_SIZE / 2 + p.cos(i * 2.39) * spread * 0.55;
+        const cy = OCEAN_H * 0.44  + p.sin(i * 1.73) * spread * 0.22;
+        g.tx = p.constrain(cx + p.random(-spread * 0.55, spread * 0.55), 40, CANVAS_SIZE - 40);
+        g.ty = p.constrain(cy + p.random(-28, 28), 18, OCEAN_H - 16);
       }
 
       g.x += (dx / dist) * g.speed;
@@ -91,7 +98,6 @@ registerSketch('sk3', function (p) {
       g.x  = p.constrain(g.x, 40, CANVAS_SIZE - 40);
       g.y  = p.constrain(g.y, 18, OCEAN_H - 16);
 
-      // Draw M-shape wing
       g.flap += 0.09;
       const wing = p.sin(g.flap) * 5.5;
       p.stroke(230, 242, 255, 195);
@@ -104,12 +110,62 @@ registerSketch('sk3', function (p) {
       p.endShape();
     }
 
+    // ---- Minute label ----
+    p.noStroke();
+    p.fill(180, 210, 255, 190);
+    p.textSize(10);
+    p.textAlign(p.RIGHT);
+    p.textStyle(p.NORMAL);
+    p.text('Minute=' + (mn < 10 ? '0' + mn : mn) + ' · ' + (mn < 30 ? 'Scattered' : 'Clustered'),
+           CANVAS_SIZE - 18, OCEAN_H - 10);
+
+    // ---- Legend panel (top-right) ----
+    drawLegend();
+
     // Draw frame
     p.noFill();
     p.stroke(0);
     p.strokeWeight(1);
     p.rect(0, 0, p.width - 1, p.height - 1);
   };
+
+  function drawLegend() {
+    const bx = CANVAS_SIZE - 150, by = 18, bw = 133, bh = 58;
+    p.fill(10, 30, 70, 170);
+    p.noStroke();
+    p.rect(bx, by, bw, bh, 6);
+    p.noStroke();
+    p.fill(180, 210, 255, 210);
+    p.textSize(9);
+    p.textAlign(p.LEFT);
+    p.textStyle(p.NORMAL);
+    p.text('0 min – Scattered', bx + 8, by + 14);
+    for (let i = 0; i < 6; i++) {
+      const gx = bx + 14 + i * 18, gy = by + 28;
+      p.stroke(220, 235, 255, 200);
+      p.strokeWeight(1.2);
+      p.noFill();
+      p.beginShape();
+      p.vertex(gx - 7, gy - 2);
+      p.vertex(gx,     gy + 2);
+      p.vertex(gx + 7, gy - 2);
+      p.endShape();
+    }
+    p.noStroke();
+    p.fill(180, 210, 255, 210);
+    p.text('59 min – Clustered', bx + 8, by + 44);
+    for (let i = 0; i < 6; i++) {
+      const gx = bx + 48 + i * 12, gy = by + 56;
+      p.stroke(220, 235, 255, 210);
+      p.strokeWeight(1.2);
+      p.noFill();
+      p.beginShape();
+      p.vertex(gx - 5, gy - 2);
+      p.vertex(gx,     gy + 2);
+      p.vertex(gx + 5, gy - 2);
+      p.endShape();
+    }
+  }
 
   p.windowResized = function () { p.resizeCanvas(CANVAS_SIZE, CANVAS_SIZE); };
 });

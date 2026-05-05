@@ -31,22 +31,51 @@ registerSketch('sk2', function (p) {
     p.textFont('Arial, Helvetica, sans-serif');
   };
 
-  // Inside the registerSketch('sk2', function (p) { ... })
-
   p.draw = function () {
     p.background(COL.bg); 
     
     let cx = p.width / 2;
     let cy = p.height / 2;
+    let dialCy = cy + DIAL_CY_OFF; // This is the center of the watch face
 
-    // 1. Draw Background Effect
+    // --- Drawing the Layers ---
     drawBackground(cx, cy);
-    
-    // 2. Draw Watch Hardware
     drawWatchBand(cx, cy);
     drawWatchCase(cx, cy);
     drawScreen(cx, cy);
+
+  
+    drawClockTime(cx, dialCy - 44); 
   };
+
+  // ---------- HELPER FUNCTIONS (The "Definitions") ----------
+
+
+  function drawClockTime(x, y) {
+    const hh = p.nf(p.hour(), 2);
+    const mm = p.nf(p.minute(), 2);
+    const ss = p.nf(p.second(), 2);
+
+    p.noStroke();
+    p.textAlign(p.CENTER, p.CENTER);
+
+    p.fill(COL.labelFaint);
+    p.textSize(8);
+    p.textStyle(p.NORMAL);
+    p.text('TIME OF DAY', x, y - 13);
+
+    p.fill(COL.text);
+    p.textSize(24);
+    p.textStyle(p.BOLD);
+    p.text(`${hh}:${mm}`, x, y + 4);
+
+    p.fill(COL.labelFaint);
+    p.textSize(10);
+    p.textStyle(p.NORMAL);
+    p.text(ss, x, y + 21);
+    
+    p.textStyle(p.NORMAL); 
+  }
 
   // --- Background with radial-like effect ---
   function drawBackground(cx, cy) {

@@ -1,6 +1,20 @@
 // Instance-mode sketch for HWK 4 - Clock 1 (Running Watch)
 registerSketch('sk2', function (p) {
-  // ---------- 1. Layout Constants ----------
+  // --- 1. Simulation State -----------------
+  let running = false;
+  let startMs = 0;
+  let elapsedMs = 0;
+  let totalDist = 0;
+  let lapDist = 0;
+  let lapCount = 1;
+  let heartRate = 72;
+  let hrPhase = 0;
+  let actualPace = 8.0;
+  let targetPace = 5.0;
+
+  let paceSlider;
+  let toggleButton;
+  // ---------- 2. Layout Constants ----------
   const W = 380;
   const H = 600;
   const CW = 148;   // Case half-width
@@ -9,7 +23,7 @@ registerSketch('sk2', function (p) {
   const DIAL_R = 118; 
   const DIAL_CY_OFF = -(CH - PAD) + 10 + DIAL_R; 
 
-  // ---------- 2. Color Palette ----------
+  // ---------- 3. Color Palette ----------
   const COL = {
     bg: '#f0f0ec',
     bgInner: '#e4e4de',
@@ -28,25 +42,82 @@ registerSketch('sk2', function (p) {
     // Creating an 800x800 canvas as per assignment limits
     p.createCanvas(800, 800);
     p.frameRate(60);
-    p.textFont('Arial, Helvetica, sans-serif');
+
+  // ---  Initialize UI Elements ---
+    // Target Pace Slider (3 to 10 min/km)
+    paceSlider = p.createSlider(3, 10, 5, 0.1);
+    paceSlider.position(p.width / 2 - 190, p.height / 2 + 320);
+    paceSlider.size(200);
+
+    // Start/Pause Button
+    toggleButton = p.createButton('▶  Start');
+    toggleButton.position(p.width / 2 + 40, p.height / 2 + 315);
+    toggleButton.style('background', '#1a1a18');
+    toggleButton.style('color', '#fafaf7');
+    toggleButton.style('padding', '8px 20px');
+    toggleButton.style('border-radius', '6px');
+    toggleButton.style('cursor', 'pointer');
+    toggleButton.mousePressed(toggleRun);
   };
 
   p.draw = function () {
+    // --- 3. Simulation Logic (Updates every frame) ---
+    if (running) {
+      elapsedMs = p.millis() - startMs;
+      const dt = p.deltaTime / 1000; // time change in seconds
+      
+      targetPace = paceSlider.value();
+      // Smoothly transition actual pace toward target
+      actualPace = p.lerp(actualPace, targetPace + p.sin(elapsedMs / 8000) * 0.35, 0.005);
+
+      const speedKmS = 1 / (actualPace * 60);
+      totalDist += speedKmS * dt;
+      lapDist = totalDist % 1.0;
+      lapCount = p.floor(totalDist) + 1;
+
+      // Simulate heart rate based on pace
+      hrPhase += dt * 0.3;
+      const baseHR = 60 + (10 - actualPace) * 12;
+      heartRate = p.constrain(p.round(baseHR + p.sin(hrPhase) * 4), 60, 195);
+    }
+
+    // --- 4. Render Layers ---
     p.background(COL.bg); 
-    
     let cx = p.width / 2;
     let cy = p.height / 2;
-    let dialCy = cy + DIAL_CY_OFF; // This is the center of the watch face
+    let dialCy = cy + DIAL_CY_OFF;
 
-    // --- Drawing the Layers ---
     drawBackground(cx, cy);
     drawWatchBand(cx, cy);
     drawWatchCase(cx, cy);
     drawScreen(cx, cy);
+    drawClockTime(cx, dialCy - 44);
 
-  
-    drawClockTime(cx, dialCy - 44); 
+    // Add a label for the slider
+    drawSliderLabel(cx - 190, cy + 310);
   };
+
+  // --- 5. New Helper Functions ---
+  function toggleRun() {
+    running = !running;
+    if (running) {
+      startMs = p.millis() - elapsedMs;
+      toggleButton.html('⏸  Pause');
+    } else {
+      toggleButton.html('▶  Start');
+    }
+  }
+
+  function drawSliderLabel(x, y) {
+    p.fill(COL.textMid);
+    p.noStroke();
+    p.textSize(12);
+    p.textAlign(p.LEFT, p.CENTER);
+    const m = p.floor(paceSlider.value());
+    const s = p.nf(p.round((paceSlider.value() - m) * 60), 2);
+    p.text(`Target pace: ${m}:${s} /km`, x, y);
+  }
+
 
   // ---------- HELPER FUNCTIONS (The "Definitions") ----------
 

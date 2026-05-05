@@ -92,6 +92,33 @@ registerSketch('sk2', function (p) {
     drawWatchCase(cx, cy);
     drawScreen(cx, cy);
     drawClockTime(cx, dialCy - 44);
+    // Calculate angles based on distance progression (0 to 1.0 km)
+    const elSec = elapsedMs / 1000;
+    const expDist = (running || elapsedMs > 0) ? (elSec / (targetPace * 60)) % 1.0 : 0;
+    
+    const actualAngle = angForDist(lapDist);
+    const targetAngle = angForDist(expDist);
+
+    // Draw the static dial (ticks and labels)
+    drawDial(cx, dialCy);
+
+    // Draw the interactive hands
+    // We use a clip to ensure hands stay within the screen area
+    p.drawingContext.save();
+    p.drawingContext.beginPath();
+    rrPath(cx - CW + PAD, cy - CH + PAD, (CW - PAD) * 2, (CH - PAD) * 2, 26);
+    p.drawingContext.clip();
+    
+    // Actual Pace Hand (Thicker, Orange)
+    drawHand(cx, dialCy, actualAngle, DIAL_R - 12, [220, 80, 30], 4.0);
+    // Target Pace Hand (Thinner, Blue)
+    drawHand(cx, dialCy, targetAngle, DIAL_R - 12, [30, 120, 220], 2.2);
+    
+    // Center pin of the watch hands
+    p.fill(COL.text);
+    p.noStroke();
+    p.circle(cx, dialCy, 9);
+    p.drawingContext.restore();
 
     // Add a label for the slider
     drawSliderLabel(cx - 190, cy + 310);
@@ -242,5 +269,69 @@ registerSketch('sk2', function (p) {
     dc.lineTo(x, y + r);
     dc.quadraticCurveTo(x, y, x + r, y);
     dc.closePath();
+  }
+  /**
+   * Draws the circular watch dial with ticks and distance labels
+   */
+  function drawDial(cx, cy) {
+    const R = DIAL_R;
+    p.drawingContext.save();
+    
+    // Track ring
+    p.noFill();
+    p.stroke('rgba(0,0,0,0.07)');
+    p.strokeWeight(5);
+    p.circle(cx, cy, (R - 4) * 2);
+
+    // Major and Minor Ticks
+    for (let i = 0; i < 40; i++) {
+      const ang = -p.HALF_PI + (i / 40) * p.TWO_PI;
+      const isMajor = i % 10 === 0;
+      const r1 = R - (isMajor ? 20 : 11);
+      const r2 = R - 2;
+      
+      p.stroke(isMajor ? 'rgba(30,30,30,0.65)' : 'rgba(30,30,30,0.22)');
+      p.strokeWeight(isMajor ? 2 : 1);
+      p.line(cx + p.cos(ang) * r1, cy + p.sin(ang) * r1, 
+             cx + p.cos(ang) * r2, cy + p.sin(ang) * r2);
+    }
+
+    // Distance Labels (Visual cues for the runner)
+    p.noStroke();
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(9);
+    p.fill(COL.textMid);
+    p.text('0 km', cx, cy - R + 32);
+    p.fill(COL.labelFaint);
+    p.text('0.5 km', cx, cy + R - 32);
+    
+    p.drawingContext.restore();
+  }
+
+  /**
+   * Utility to map distance (0.0 - 1.0) to a rotation angle in radians
+   */
+  function angForDist(d) {
+    // Starts at -90 degrees (top of the clock)
+    return -p.HALF_PI + (d / 1.0) * p.TWO_PI;
+  }
+
+  /**
+   * Draws a watch hand given an angle and length
+   */
+  function drawHand(cx, cy, ang, len, rgb, sw) {
+    const ex = cx + p.cos(ang) * len;
+    const ey = cy + p.sin(ang) * len;
+    
+    p.stroke(rgb[0], rgb[1], rgb[2]);
+    p.strokeWeight(sw);
+    p.strokeCap(p.ROUND);
+    p.line(cx, cy, ex, ey);
+    
+    // Small counter-weight on the opposite side
+    const tx = cx + p.cos(ang + p.PI) * 13;
+    const ty = cy + p.sin(ang + p.PI) * 13;
+    p.strokeWeight(sw * 0.5);
+    p.line(cx, cy, tx, ty);
   }
 });

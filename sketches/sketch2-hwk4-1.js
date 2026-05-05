@@ -65,12 +65,12 @@ registerSketch('sk2', function (p) {
     let cy = p.height / 2;
 
     paceSlider = p.createSlider(3, 10, 5, 0.1);
-    paceSlider.position(cx - 160, cy + 320);
+    paceSlider.position(cx - 155, cy + 320);
     paceSlider.size(180);
     paceSlider.style('accent-color', '#dc5020');
 
     toggleButton = p.createButton('▶  Start');
-    toggleButton.position(cx + 60, cy + 315);
+    toggleButton.position(cx + 45, cy + 315);
     toggleButton.style('background', '#1a1a18');
     toggleButton.style('color', '#fafaf7');
     toggleButton.style('border', 'none');
@@ -88,10 +88,11 @@ registerSketch('sk2', function (p) {
     let cy = p.height / 2;
     let dialCy = cy + DIAL_DY;
 
+    targetPace = paceSlider.value();
+
     if (running) {
       elapsedMs = p.millis() - startMs;
       const dt = p.deltaTime / 1000;
-      targetPace = paceSlider.value();
       actualPace = p.lerp(actualPace, targetPace + p.sin(elapsedMs / 8000) * 0.35, 0.005);
       totalDist += (1 / (actualPace * 60)) * dt;
       lapDist = totalDist % 1.0;
@@ -124,7 +125,6 @@ registerSketch('sk2', function (p) {
     p.drawingContext.restore();
 
     drawPanels(cx, cy);
-    drawSliderLabel(cx, cy);
   };
 
   // ---  Helper Functions ---
@@ -136,15 +136,6 @@ registerSketch('sk2', function (p) {
     } else {
       toggleButton.html('▶  Start');
     }
-  }
-
-  function drawSliderLabel(cx, cy) {
-    const tp = paceSlider.value(), m = p.floor(tp), s = p.nf(p.round((tp % 1) * 60), 2);
-    p.drawingContext.shadowColor = 'transparent';
-    p.fill(COL.textMid); p.noStroke();
-    p.textFont('Arial,Helvetica,sans-serif'); p.textSize(12); p.textStyle(p.NORMAL);
-    p.textAlign(p.LEFT, p.CENTER);
-    p.text(`Target pace:  ${m}:${s} /km`, cx - 160, cy + 335);
   }
 
   // ---------- DRAWING HELPERS ----------

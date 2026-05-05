@@ -50,8 +50,8 @@
           </div>
 
           <div class="welcome-copy">
-            <p><strong>[Your name]</strong> ([optional pronouns])</p>
-            <p>I am a master’s student in [program], focused on [interest area or domain].</p>
+            <p><strong>Zijing Wang</strong> (She/Her/Hers)</p>
+            <p>I am a master’s student in MSIM, focused on Data Science and AI.</p>
             <p>This quarter I want to get better at [analysis, storytelling, interaction design, etc.].</p>
             <p>One dataset or topic I am excited to visualize is [topic], because [short reason].</p>
           </div>
@@ -65,10 +65,15 @@
       <div id="sketch-drawing-sk2" class="sketch-evolution">
         <div class="welcome-template hwk-template" aria-labelledby="sk2-notes-title">
           <h3 id="sk2-notes-title">Documenting iterative process</h3>
-          <p class="small-note">Replace placeholders with your own notes and images.</p>
-          <p>
-            Context of use: Explain where your clocks/timers would be used, by whom, and what problem they help solve. [add 2-3 sentences]
+          <p class="small-note"><a href="https://github.com/zwang-real/imt-561-homeworks/blob/main/sketches/sketch2-hwk4-1.js" target="_blank" rel="noopener noreferrer">Source code</a>
           </p>
+          <p>
+            Context of use: 
+            </p>
+           This clock is designed for runners who want a more expressive and readable display of their pace during a workout. Rather than showing raw numbers alone, it visualizes the relationship between actual and target pace as a dial, making it immediately clear at a glance whether you are ahead of or behind your goal. It is meant to be used as a smartwatch interface during casual runs or training sessions.
+          </p>
+          The circular dial directly mirrors the form language of a traditional watch face, which runners are already familiar with. The two hands encoding actual versus target pace create an immediate visual gap that communicates performance without requiring the user to read and compare two numbers mentally. The supporting panels for heart rate, lap distance, and elapsed time follow the same hierarchy a runner needs: pace first, then effort, then progress.
+          <p></p>
 
           <article class="clock-template">
             <h4>Final Clock 1</h4>
@@ -83,14 +88,17 @@
                 <div class="image-placeholder">Clock 1 sketch photo 2</div>
               </figure>
             </div>
-            <p>
-              Design process: In 1–2 paragraphs (or bullet points), explain how this clock evolved from sketches to final
-              form. Name the information visualization principles you applied (readability, hierarchy, color, layout,
-              interaction, accessibility). [mention 2-3 design decisions and why]
-            </p>
-            <p>
-              Self-reflection / future work: What would you improve next, and why? [add two improvements you'd make and explain why]
-            </p>
+            <p>Design process:</p>
+<ul>
+  <li><strong>Keeping familiar form while adding new encoding:</strong> Rather than abandoning the watch face entirely, I kept the circular dial as the primary canvas. The key design decision was to add a second hand for target pace alongside the actual pace hand, so the gap between them encodes performance directly as a visual angle rather than a numeric difference.</li>
+  <li><strong>Layering information by priority:</strong> The dial handles the most time-sensitive information, pace, while the panel rows below handle slower-changing data like heart rate, lap count, and total distance. This reflects the visualization principle of matching update frequency to visual prominence: the fastest-changing data gets the most central, animated channel.</li>
+  <li><strong>Color as a performance signal:</strong> Orange for actual pace and blue for target pace were chosen because they are perceptually distinct and carry an intuitive connotation: warm for effort, cool for goal. The sector shading between the two hands further reinforces whether you are over or under target without requiring any text reading.</li>
+</ul>
+            <p>Self-reflection / future work:</p>
+<ul>
+  <li><strong>The pace dial does not communicate direction of change.</strong> Currently the actual pace hand just sits at a position; it does not show whether pace is improving or deteriorating. A future version could add a small trailing arc or fade behind the hand to show its recent trajectory, making the trend visible without adding extra numeric panels.</li>
+  <li><strong>Heart rate encoding is purely numeric.</strong> The heart rate panel changes background color when the value is high, but this is a weak signal. A future version could encode heart rate as a pulsing animation or a separate small arc dial, making the effort level perceptible even in peripheral vision, which matters more during an actual run than when sitting at a desk.</li>
+</ul>
           </article>
         </div>
       </div>
@@ -102,14 +110,17 @@
       <div id="sketch-drawing-sk3" class="sketch-evolution">
         <div class="welcome-template hwk-template" aria-labelledby="sk3-notes-title">
           <h3 id="sk3-notes-title">Documenting iterative process</h3>
-          <p class="small-note">Replace placeholders with your own notes and images.</p>
+          <p class="small-note"><a href="https://github.com/zwang-real/imt-561-homeworks/blob/main/sketches/sketch3-hwk4-2.js" target="_blank" rel="noopener noreferrer">Source code</a>
+          </p>
           <p>
-            Context of use: Explain where your clocks/timers would be used, by whom, and what problem they help solve. [add 2-3 sentences]
+            Context of use: 
+            </p>
+This clock is designed for everyday moments of gentle pause: a walk in the park, sitting by a window, or winding down after work. It is meant for anyone who wants to step away from the urgency of conventional timekeeping and experience time as something ambient and natural rather than something to be managed. Instead of demanding attention, it rewards it. The longer you watch, the more you notice how the flock drifts, the footprints accumulate, and the tide resets, all marking time without ever showing a number unless you ask.
           </p>
 
           <article class="clock-template">
             <h4>Final Clock 2</h4>
-            <p class="small-note">Sketch iteration documentation (paper/hand-drawn photos)</p>
+            <p class="small-note"></p>
             <div class="iteration-grid">
               <figure class="iteration-item">
                 <!-- <img src="images/clock2-sketch1.jpg" alt="Clock 2 sketch iteration 1" /> -->
@@ -120,13 +131,19 @@
                 <div class="image-placeholder">Clock 2 sketch photo 2</div>
               </figure>
             </div>
+            <p>Design process:</p>
+<ul>
+  <li><strong>Breaking away from literal clock design:</strong> My previous clock designs had all been too representational and conventional. I wanted to challenge my own assumptions about how time could be visualized, moving away from familiar forms like clock hands or numeric displays toward something more abstract and experiential. This shift in thinking led to the seascape concept, where time is felt rather than read.</li>
+  <li><strong>Encoding time through natural behavior, not numbers:</strong> The minute hand was replaced by flock density. A scattered flock at minute 0 slowly converges toward minute 59, encoding the passage of each hour as a collective, organic movement. This draws on the visualization principle that position and clustering are pre-attentive: viewers perceive the difference without consciously counting.</li>
+  <li><strong>Layered time scales for richer reading:</strong> Rather than encoding only one unit of time, the design stacks three: seconds (footprints), minutes (flock spread), and an explicit digital readout available on demand via press-and-hold. The scene feels alive at the second level, meaningful at the minute level, and precise when needed.</li>
+  <li><strong>The wave as a natural reset metaphor:</strong> Early versions simply cleared footprints instantly at :00. After a classmate questioned whether the context and audience were clear enough, I made the minute transition more dramatic. The wave-rush animation was added so the reset feels inevitable and natural, the way a real tide erases marks on sand.</li>
+</ul>
             <p>
-              Design process: In 1–2 paragraphs (or bullet points), explain your iterations and final decisions. Make
-              explicit which visualization considerations shaped the result. [mention 2-3 design decisions and why]
-            </p>
-            <p>
-              Self-reflection / future work: What would you improve next, and why? [add two improvements you'd make and explain why]
-            </p>
+             <p>Self-reflection / future work:</p>
+<ul>
+  <li><strong>Hour-level encoding is missing.</strong> Currently the visualization has no visual channel dedicated to the hour, meaning two different hours look identical until the user presses and holds. A future version could change the sky gradient color to encode the hour passively, warmer at dawn and dusk, cooler at midday. This would also make the scene feel tied to actual time of day, deepening the immersion.</li>
+  <li><strong>The flock behavior could be more ecologically convincing.</strong> Right now gulls move independently toward random targets, which feels mechanical on close inspection. Adding flocking rules such as separation, alignment, and cohesion would make the clustering more believable and visually satisfying, while still preserving the minute-encoding logic since the overall spread of the flock would still shrink over the hour.</li>
+</ul>
           </article>
         </div>
       </div>

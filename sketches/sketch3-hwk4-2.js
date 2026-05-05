@@ -1,12 +1,11 @@
-// Design choice: DIGITS bitmap lookup maps each character to gull positions;
-//               progress lerp smoothly animates the transition into formation
+// Design choice: three-toed gull print encodes seconds visually;
+//               each second leaves a mark, making time literally walk across the sand
 
 registerSketch('sk3', function (p) {
   const CANVAS_SIZE = 680;
   const OCEAN_H = CANVAS_SIZE / 3;
   const GULL_N  = 38;
 
-  // ---- Digit bitmaps (7-row, 3-col pixel font) ----
   const DIGITS = {
     '0': [[1,1,1],[1,0,1],[1,0,1],[1,0,1],[1,0,1],[1,0,1],[1,1,1]],
     '1': [[0,1,0],[1,1,0],[0,1,0],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
@@ -53,6 +52,10 @@ registerSketch('sk3', function (p) {
   let progress  = 0;
   let holdTimer = null;
 
+  // Footprint state
+  let footprints = [];
+  let lastSec    = -1;
+
   function initGulls() {
     gulls = [];
     for (let i = 0; i < GULL_N; i++) {
@@ -72,7 +75,6 @@ registerSketch('sk3', function (p) {
     const now = new Date();
     const ts  = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
     formation = buildFormation(ts);
-    // Ensure enough gulls
     while (gulls.length < formation.length) {
       gulls.push({
         x: p.random(40, CANVAS_SIZE - 40), y: p.random(15, OCEAN_H - 18),
@@ -81,6 +83,38 @@ registerSketch('sk3', function (p) {
         flap: p.random(0, p.TWO_PI)
       });
     }
+  }
+
+  // Draw a three-toed seagull footprint
+  function drawGullPrint(x, y, angle, sz) {
+    p.push();
+    p.translate(x, y);
+    p.rotate(angle);
+    p.fill(125, 95, 60, 165);
+    p.noStroke();
+    const s = sz * 5.5;
+
+    // Middle toe
+    p.push(); p.rotate(-0.05);
+    p.rect(-s * 0.14, -s * 1.55, s * 0.28, s * 1.4, 2);
+    p.triangle(0, -s * 1.55, -s * 0.28, -s * 2.05, s * 0.28, -s * 2.05);
+    p.pop();
+
+    // Left toe
+    p.push(); p.rotate(-0.58);
+    p.rect(-s * 0.12, -s * 1.3, s * 0.24, s * 1.2, 2);
+    p.triangle(0, -s * 1.3, -s * 0.24, -s * 1.78, s * 0.2, -s * 1.78);
+    p.pop();
+
+    // Right toe
+    p.push(); p.rotate(0.58);
+    p.rect(-s * 0.12, -s * 1.3, s * 0.24, s * 1.2, 2);
+    p.triangle(0, -s * 1.3, -s * 0.2, -s * 1.78, s * 0.24, -s * 1.78);
+    p.pop();
+
+    // Heel pad
+    p.ellipse(0, 0, s * 0.72, s * 0.72);
+    p.pop();
   }
 
   p.setup = function () {
@@ -93,6 +127,7 @@ registerSketch('sk3', function (p) {
   p.draw = function () {
     const now     = new Date();
     const mn      = now.getMinutes();
+    const sc      = now.getSeconds();
     const cluster = mn / 59;
 
     // ---- Sky ----
@@ -137,6 +172,26 @@ registerSketch('sk3', function (p) {
       );
     }
 
+    // ---- Add one footprint per second ----
+    if (sc !== lastSec) {
+      if (sc === 0) {
+        footprints = []; // reset at top of each minute
+      } else {
+        footprints.push({
+          x:     p.random(55, CANVAS_SIZE - 55),
+          y:     p.random(OCEAN_H + 40, CANVAS_SIZE - 40),
+          angle: p.random(-0.5, 0.5),
+          sz:    p.random(0.7, 1.3)
+        });
+      }
+      lastSec = sc;
+    }
+
+    // Draw all accumulated footprints
+    for (const f of footprints) {
+      drawGullPrint(f.x, f.y, f.angle, f.sz);
+    }
+
     // ---- Formation press/release logic ----
     if (p.mouseIsPressed && p.mouseX > 0 && p.mouseX < CANVAS_SIZE &&
         p.mouseY > 0 && p.mouseY < CANVAS_SIZE) {
@@ -154,7 +209,6 @@ registerSketch('sk3', function (p) {
     // ---- Seagulls ----
     for (let i = 0; i < gulls.length; i++) {
       const g = gulls[i];
-
       if (!isForming) {
         const dx   = g.tx - g.x;
         const dy   = g.ty - g.y;
@@ -171,11 +225,9 @@ registerSketch('sk3', function (p) {
         g.x  = p.constrain(g.x, 40, CANVAS_SIZE - 40);
         g.y  = p.constrain(g.y, 18, OCEAN_H - 16);
       }
-
       const ti = formation[i] || { x: CANVAS_SIZE / 2, y: OCEAN_H * 0.45 };
       const fx = isForming ? p.lerp(g.x, ti.x, progress) : g.x;
       const fy = isForming ? p.lerp(g.y, ti.y, progress) : g.y;
-
       g.flap += 0.09;
       const wing  = p.sin(g.flap) * 5.5;
       const alpha = isForming ? p.lerp(190, 255, progress) : 195;
@@ -189,24 +241,20 @@ registerSketch('sk3', function (p) {
       p.endShape();
     }
 
-    // ---- Minute label ----
-    p.noStroke();
-    p.fill(180, 210, 255, 190);
-    p.textSize(10);
-    p.textAlign(p.RIGHT);
-    p.textStyle(p.NORMAL);
+    // ---- Labels ----
+    p.noStroke(); p.fill(180, 210, 255, 190);
+    p.textSize(10); p.textAlign(p.RIGHT); p.textStyle(p.NORMAL);
     p.text('Minute=' + pad2(mn) + ' · ' + (mn < 30 ? 'Scattered' : 'Clustered'),
            CANVAS_SIZE - 18, OCEAN_H - 10);
 
-    // ---- Legend ----
+    p.noStroke(); p.fill(100, 70, 30, 185);
+    p.textSize(10); p.textAlign(p.LEFT);
+    p.text('footprints: ' + sc + 's · resets each minute', 18, CANVAS_SIZE - 14);
+
     drawLegend();
 
-    // Hint text
-    p.noStroke();
-    p.fill(40, 80, 140, 150);
-    p.textSize(11);
-    p.textAlign(p.CENTER);
-    p.textStyle(p.NORMAL);
+    p.noStroke(); p.fill(40, 80, 140, 150);
+    p.textSize(11); p.textAlign(p.CENTER); p.textStyle(p.NORMAL);
     p.text('点击并按住 → 海鸥在空中拼出当前时间', CANVAS_SIZE / 2, CANVAS_SIZE - 2);
 
     // Draw frame
@@ -218,32 +266,23 @@ registerSketch('sk3', function (p) {
 
   function drawLegend() {
     const bx = CANVAS_SIZE - 150, by = 18, bw = 133, bh = 58;
-    p.fill(10, 30, 70, 170);
-    p.noStroke();
+    p.fill(10, 30, 70, 170); p.noStroke();
     p.rect(bx, by, bw, bh, 6);
-    p.noStroke();
-    p.fill(180, 210, 255, 210);
-    p.textSize(9);
-    p.textAlign(p.LEFT);
-    p.textStyle(p.NORMAL);
+    p.noStroke(); p.fill(180, 210, 255, 210);
+    p.textSize(9); p.textAlign(p.LEFT); p.textStyle(p.NORMAL);
     p.text('0 min – Scattered', bx + 8, by + 14);
     for (let i = 0; i < 6; i++) {
       const gx = bx + 14 + i * 18, gy = by + 28;
-      p.stroke(220, 235, 255, 200);
-      p.strokeWeight(1.2);
-      p.noFill();
+      p.stroke(220, 235, 255, 200); p.strokeWeight(1.2); p.noFill();
       p.beginShape();
       p.vertex(gx - 7, gy - 2); p.vertex(gx, gy + 2); p.vertex(gx + 7, gy - 2);
       p.endShape();
     }
-    p.noStroke();
-    p.fill(180, 210, 255, 210);
+    p.noStroke(); p.fill(180, 210, 255, 210);
     p.text('59 min – Clustered', bx + 8, by + 44);
     for (let i = 0; i < 6; i++) {
       const gx = bx + 48 + i * 12, gy = by + 56;
-      p.stroke(220, 235, 255, 210);
-      p.strokeWeight(1.2);
-      p.noFill();
+      p.stroke(220, 235, 255, 210); p.strokeWeight(1.2); p.noFill();
       p.beginShape();
       p.vertex(gx - 5, gy - 2); p.vertex(gx, gy + 2); p.vertex(gx + 5, gy - 2);
       p.endShape();
@@ -251,14 +290,12 @@ registerSketch('sk3', function (p) {
   }
 
   p.mousePressed = function () {
-    if (p.mouseX > 0 && p.mouseX < CANVAS_SIZE &&
-        p.mouseY > 0 && p.mouseY < CANVAS_SIZE) {
+    if (p.mouseX > 0 && p.mouseX < CANVAS_SIZE && p.mouseY > 0 && p.mouseY < CANVAS_SIZE) {
       isForming = true; progress = 0; holdTimer = null;
       updateFormation();
     }
   };
 
   p.mouseReleased = function () { holdTimer = null; };
-
   p.windowResized = function () { p.resizeCanvas(CANVAS_SIZE, CANVAS_SIZE); };
 });

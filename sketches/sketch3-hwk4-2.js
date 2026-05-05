@@ -1,5 +1,5 @@
-// Design choice: three-toed gull print encodes seconds visually;
-//               each second leaves a mark, making time literally walk across the sand
+// Design choice: wave sweeps left→right then retreats right→left, mimicking tidal motion;
+//               the erasure of footprints at :00 marks each new minute as a fresh start
 
 registerSketch('sk3', function (p) {
   const CANVAS_SIZE = 680;
@@ -52,9 +52,13 @@ registerSketch('sk3', function (p) {
   let progress  = 0;
   let holdTimer = null;
 
-  // Footprint state
   let footprints = [];
   let lastSec    = -1;
+
+  // Wave rush state
+  let waveRush  = false;
+  let rushX     = 0;
+  let rushPhase = 0; // 0 = pushing in, 1 = pulling back
 
   function initGulls() {
     gulls = [];
@@ -85,7 +89,6 @@ registerSketch('sk3', function (p) {
     }
   }
 
-  // Draw a three-toed seagull footprint
   function drawGullPrint(x, y, angle, sz) {
     p.push();
     p.translate(x, y);
@@ -93,26 +96,18 @@ registerSketch('sk3', function (p) {
     p.fill(125, 95, 60, 165);
     p.noStroke();
     const s = sz * 5.5;
-
-    // Middle toe
     p.push(); p.rotate(-0.05);
     p.rect(-s * 0.14, -s * 1.55, s * 0.28, s * 1.4, 2);
     p.triangle(0, -s * 1.55, -s * 0.28, -s * 2.05, s * 0.28, -s * 2.05);
     p.pop();
-
-    // Left toe
     p.push(); p.rotate(-0.58);
     p.rect(-s * 0.12, -s * 1.3, s * 0.24, s * 1.2, 2);
     p.triangle(0, -s * 1.3, -s * 0.24, -s * 1.78, s * 0.2, -s * 1.78);
     p.pop();
-
-    // Right toe
     p.push(); p.rotate(0.58);
     p.rect(-s * 0.12, -s * 1.3, s * 0.24, s * 1.2, 2);
     p.triangle(0, -s * 1.3, -s * 0.2, -s * 1.78, s * 0.24, -s * 1.78);
     p.pop();
-
-    // Heel pad
     p.ellipse(0, 0, s * 0.72, s * 0.72);
     p.pop();
   }
@@ -172,10 +167,13 @@ registerSketch('sk3', function (p) {
       );
     }
 
-    // ---- Add one footprint per second ----
+    // ---- Per-second footprints ----
     if (sc !== lastSec) {
       if (sc === 0) {
-        footprints = []; // reset at top of each minute
+        footprints = [];
+        waveRush   = true;
+        rushX      = -80;
+        rushPhase  = 0;
       } else {
         footprints.push({
           x:     p.random(55, CANVAS_SIZE - 55),
@@ -186,10 +184,68 @@ registerSketch('sk3', function (p) {
       }
       lastSec = sc;
     }
+    for (const f of footprints) drawGullPrint(f.x, f.y, f.angle, f.sz);
 
-    // Draw all accumulated footprints
-    for (const f of footprints) {
-      drawGullPrint(f.x, f.y, f.angle, f.sz);
+    // ---- Wave rush animation ----
+    if (waveRush) {
+      if (rushPhase === 0) {
+        rushX += 20;
+        if (rushX > CANVAS_SIZE + 60) { rushPhase = 1; rushX = CANVAS_SIZE + 60; }
+      } else {
+        rushX -= 16;
+        if (rushX < -80) { waveRush = false; }
+      }
+
+      const covered = p.constrain(rushX, 0, CANVAS_SIZE);
+      const alpha   = rushPhase === 0
+        ? p.map(rushX, -80, CANVAS_SIZE * 0.4, 0, 185, true)
+        : p.map(rushX, CANVAS_SIZE + 60, -80, 0, 185, true);
+
+      // Water body
+      p.noStroke();
+      p.fill(50, 120, 200, alpha * 0.88);
+      p.beginShape();
+      p.vertex(0, CANVAS_SIZE); p.vertex(0, OCEAN_H + 22);
+      for (let x = 0; x <= covered; x += 5) {
+        const wy = OCEAN_H + 22 + p.sin(x * 0.035 + waveOff * 2.2) * 7
+                             + p.sin(x * 0.015 + waveOff) * 12;
+        p.vertex(x, wy);
+      }
+      if (covered < CANVAS_SIZE) {
+        const frontY = OCEAN_H + 22 + p.sin(covered * 0.035 + waveOff * 2.2) * 7
+                                    + p.sin(covered * 0.015 + waveOff) * 12;
+        p.vertex(covered, frontY);
+        p.vertex(covered, CANVAS_SIZE);
+      } else {
+        p.vertex(CANVAS_SIZE, CANVAS_SIZE);
+      }
+      p.endShape(p.CLOSE);
+
+      // Foam
+      p.fill(210, 235, 255, alpha * 0.5);
+      p.beginShape();
+      p.vertex(0, CANVAS_SIZE); p.vertex(0, OCEAN_H + 26);
+      for (let x = 0; x <= p.min(covered + 50, CANVAS_SIZE); x += 5) {
+        const wy = OCEAN_H + 26 + p.sin(x * 0.055 + waveOff * 3) * 5
+                             + p.cos(x * 0.022 + waveOff * 1.5) * 9;
+        p.vertex(x, wy);
+      }
+      p.vertex(p.min(covered + 50, CANVAS_SIZE), CANVAS_SIZE);
+      p.endShape(p.CLOSE);
+
+      // Crest highlight
+      if (covered > 0 && covered < CANVAS_SIZE) {
+        p.stroke(230, 248, 255, alpha);
+        p.strokeWeight(3);
+        p.noFill();
+        p.beginShape();
+        const x0 = p.max(0, covered - 55);
+        for (let x = x0; x <= covered; x += 4) {
+          const wy = OCEAN_H + 20 + p.sin(x * 0.05 + waveOff * 2.5) * 8;
+          p.vertex(x, wy);
+        }
+        p.endShape();
+      }
     }
 
     // ---- Formation press/release logic ----
@@ -246,10 +302,9 @@ registerSketch('sk3', function (p) {
     p.textSize(10); p.textAlign(p.RIGHT); p.textStyle(p.NORMAL);
     p.text('Minute=' + pad2(mn) + ' · ' + (mn < 30 ? 'Scattered' : 'Clustered'),
            CANVAS_SIZE - 18, OCEAN_H - 10);
-
     p.noStroke(); p.fill(100, 70, 30, 185);
     p.textSize(10); p.textAlign(p.LEFT);
-    p.text('footprints: ' + sc + 's · resets each minute', 18, CANVAS_SIZE - 14);
+    p.text('footprints: ' + sc + 's · wave resets each minute', 18, CANVAS_SIZE - 14);
 
     drawLegend();
 

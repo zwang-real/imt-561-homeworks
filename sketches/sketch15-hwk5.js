@@ -1,6 +1,6 @@
 // sketch15-hwk5.js
 // HWK5: Narrative Visualization — "When Philly Sleeps"
-// Commit 4: replace linear slider with clock dial; add Late Night Zone arc
+// Commit 5: add circular zoom lens on hover for spatial context
 registerSketch('sk15', function (p) {
   const CANVAS_SIZE = 800;
 
@@ -91,11 +91,13 @@ registerSketch('sk15', function (p) {
       currentHourIdx = (currentHourIdx + 1) % HOURS.length;
       lastTick = p.millis();
     }
-    const hourKey = String(HOURS[currentHourIdx]);
+    const hour    = HOURS[currentHourIdx];
+    const hourKey = String(hour);
     drawTitle();
     drawMap(hourKey);
     drawPanel(hourKey);
     drawDial();
+    drawZoomLens();       // new: magnifier on hover
     drawHoverTooltip();
     drawFootnote();
   };
@@ -225,23 +227,18 @@ registerSketch('sk15', function (p) {
     });
   }
 
-  // ── Clock dial with Late Night Zone arc ──────────────────
+  // ── Clock dial ───────────────────────────────────────────
   function drawDial() {
     const cx = DIAL_CX, cy = DIAL_CY, r = DIAL_R;
-
-    // Late Night Zone: 10 PM → 4 AM shaded arc
     const lateStart = hourToAngle(22);
     const lateEnd   = hourToAngle(4) + p.TWO_PI;
     p.noStroke(); p.fill(30, 60, 120, 130);
     p.arc(cx, cy, r * 2 + 8, r * 2 + 8, lateStart, lateEnd);
-
     p.fill(MAP_BG); p.stroke(NEIGH_STR); p.strokeWeight(1.2);
     p.ellipse(cx, cy, r * 2, r * 2);
-
     p.noStroke(); p.fill(ACCENT);
     p.textSize(7.5); p.textAlign(p.CENTER, p.CENTER); p.textLeading(10);
     p.text('LATE\nNIGHT', cx + r * 0.42, cy - r * 0.48);
-
     HOURS.forEach((h, idx) => {
       const ang = hourToAngle(h);
       p.stroke(idx === currentHourIdx ? OPEN_COL : DIM_COL);
@@ -253,14 +250,12 @@ registerSketch('sk15', function (p) {
       p.textSize(8); p.textAlign(p.CENTER, p.CENTER);
       p.text(formatHourShort(h), cx + Math.cos(ang) * r * 0.66, cy + Math.sin(ang) * r * 0.66);
     });
-
     const handAng = hourToAngle(HOURS[currentHourIdx]);
     p.stroke(OPEN_COL); p.strokeWeight(2.5);
     p.line(cx, cy, cx + Math.cos(handAng) * r * 0.76, cy + Math.sin(handAng) * r * 0.76);
     p.fill(OPEN_COL); p.noStroke(); p.ellipse(cx, cy, 8, 8);
     p.noFill(); p.stroke(NEIGH_STR); p.strokeWeight(1.5);
     p.ellipse(cx, cy, r * 2 + 10, r * 2 + 10);
-
     const overBtn = p.mouseY > cy + r + 4 && p.mouseY < cy + r + 24
                  && Math.abs(p.mouseX - cx) < 38;
     p.noStroke(); p.fill(overBtn ? OPEN_COL : DIM_COL);
@@ -268,8 +263,101 @@ registerSketch('sk15', function (p) {
     p.text(playing ? '⏸  pause' : '▶  play', cx, cy + r + 8);
   }
 
-  function hourToAngle(h) {
-    return -p.HALF_PI + (h % 12 / 12) * p.TWO_PI;
+  function hourToAngle(h) { return -p.HALF_PI + (h % 12 / 12) * p.TWO_PI; }
+
+  // ── Zoom lens: circular magnifier centered on hovered dot ─
+  function drawZoomLens() {
+    if (!hoveredDot) return;
+    const { x, y } = hoveredDot;
+    const hourKey = String(HOURS[currentHourIdx]);
+    const LENS_R = 70, ZOOM = 3.5;
+
+    // position lens — prefer top-right, adjust if out of bounds
+    let lx = x + LENS_R + 14;
+    let ly = y - LENS_R - 14;
+    if (lx + LENS_R > MAP_X + MAP_W - 4) lx = x - LENS_R - 14;
+    if (ly - LENS_R < MAP_Y + 4)         ly = y + LENS_R + 14;
+
+    const ctx = p.drawingContext;
+
+    // amber glow ring around lens
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 209, 102, 0.3)';
+    ctx.shadowBlur  = 12;
+    p.noFill(); p.stroke(OPEN_COL); p.strokeWeight(1.5);
+    p.ellipse(lx, ly, LENS_R * 2, LENS_R * 2);
+    ctx.restore();
+
+    // clip rendering to circular lens area
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(lx, ly, LENS_R - 1, 0, Math.PI * 2);
+    ctx.clip();
+
+    p.fill(MAP_BG); p.noStroke();
+    p.ellipse(lx, ly, LENS_R * 2, LENS_R * 2);
+
+    // draw zoomed neighborhood outlines
+    if (geoLoaded && geoData && geoData.features) {
+      geoData.features.forEach(feature => {
+        const geom = feature.geometry;
+        if (!geom) return;
+        const polys = geom.type === 'Polygon' ? [geom.coordinates]
+          : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+        polys.forEach(poly => {
+          poly.forEach(ring => {
+            p.beginShape();
+            p.fill(NEIGH_FILL); p.stroke(NEIGH_STR); p.strokeWeight(0.8);
+            ring.forEach(([lon, lat]) => {
+              p.vertex(lx + (geoLonToX(lon) - x) * ZOOM,
+                       ly + (geoLatToY(lat) - y) * ZOOM);
+            });
+            p.endShape(p.CLOSE);
+          });
+        });
+      });
+    }
+
+    // draw zoomed open dots near the hovered location
+    for (let i = 0; i < mapData.length; i++) {
+      const d = mapData[i];
+      if (!d.latitude || !d.longitude) continue;
+      const openHours = d.open_by_hour || {};
+      if (openHours[hourKey] !== true) continue;
+      const ox = geoLonToX(d.longitude);
+      const oy = geoLatToY(d.latitude);
+      if (Math.hypot(ox - x, oy - y) > LENS_R / ZOOM * 1.2) continue;
+
+      const sx = lx + (ox - x) * ZOOM;
+      const sy = ly + (oy - y) * ZOOM;
+      const catCol     = CAT_COLORS[d.super_category] || OPEN_COL;
+      const isHoverDot = Math.hypot(ox - x, oy - y) < 2;
+      const dr = isHoverDot ? 6 : 3.5;
+
+      const gc = p.color(catCol); gc.setAlpha(25);
+      p.fill(gc); p.noStroke(); p.ellipse(sx, sy, dr * 4, dr * 4);
+      const mc = p.color(catCol); mc.setAlpha(200);
+      p.fill(mc); p.ellipse(sx, sy, dr * 2, dr * 2);
+      p.fill(255, 255, 255, isHoverDot ? 255 : 180);
+      p.ellipse(sx, sy, dr * 0.8, dr * 0.8);
+    }
+
+    // crosshair at lens center
+    p.stroke(OPEN_COL); p.strokeWeight(0.8);
+    p.line(lx - 8, ly, lx + 8, ly);
+    p.line(lx, ly - 8, lx, ly + 8);
+
+    ctx.restore();
+
+    // redraw lens border outside clip so it's crisp
+    p.noFill(); p.stroke(OPEN_COL); p.strokeWeight(1.5);
+    p.ellipse(lx, ly, LENS_R * 2, LENS_R * 2);
+
+    // connector line from dot to lens edge
+    p.stroke(OPEN_COL); p.strokeWeight(0.6);
+    const ang = Math.atan2(ly - y, lx - x);
+    p.line(x + Math.cos(ang) * 6,       y + Math.sin(ang) * 6,
+           lx - Math.cos(ang) * LENS_R, ly - Math.sin(ang) * LENS_R);
   }
 
   // ── Hover tooltip ────────────────────────────────────────

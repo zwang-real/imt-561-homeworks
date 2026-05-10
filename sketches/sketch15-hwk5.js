@@ -108,9 +108,10 @@ registerSketch('sk15', function (p) {
     p.fill(OPEN_COL);
     p.textSize(21); p.textAlign(p.LEFT, p.TOP); p.textStyle(p.BOLD);
     p.text('WHEN PHILLY SLEEPS', MAP_X, 16);
-    p.fill(DIM_COL);
-    p.textSize(10); p.textStyle(p.NORMAL);
-    p.text('which restaurants survive the night?   drag the clock · click to pause', MAP_X, 44);
+    p.fill('#8ab4d4');        // brighter than DIM_COL
+    p.textSize(15);           // was 10
+    p.textStyle(p.NORMAL);
+    p.text('Which restaurants survive the night?   Drag the clock · Click to pause', MAP_X, 42);
   }
 
   // ── Map ──────────────────────────────────────────────────
@@ -138,7 +139,10 @@ registerSketch('sk15', function (p) {
       if (x < MAP_X + margin || x > MAP_X + MAP_W - margin ||
           y < MAP_Y + margin || y > MAP_Y + MAP_H - margin) continue;
 
-      if (hovered) hoveredDot = { x, y, name: d.name, cat: d.super_category, stars: d.stars };
+      if (hovered) {
+      hoveredDot = { x, y, name: d.name, cat: d.super_category, stars: d.stars };
+      playing = false;
+    }
 
       const catCol = CAT_COLORS[d.super_category] || OPEN_COL;
       const glowC  = p.color(catCol); glowC.setAlpha(hovered ? 50 : 18);
@@ -259,7 +263,7 @@ registerSketch('sk15', function (p) {
     const overBtn = p.mouseY > cy + r + 4 && p.mouseY < cy + r + 24
                  && Math.abs(p.mouseX - cx) < 38;
     p.noStroke(); p.fill(overBtn ? OPEN_COL : DIM_COL);
-    p.textSize(10); p.textAlign(p.CENTER, p.TOP);
+    p.textSize(13); p.textAlign(p.CENTER, p.TOP);
     p.text(playing ? '⏸  pause' : '▶  play', cx, cy + r + 8);
   }
 
@@ -382,10 +386,11 @@ registerSketch('sk15', function (p) {
 
   // ── Footnote ─────────────────────────────────────────────
   function drawFootnote() {
-    p.noStroke(); p.fill(DIM_COL);
-    p.textSize(8); p.textAlign(p.LEFT, p.BOTTOM);
-    p.text('Source: Yelp Open Dataset · Philadelphia restaurants · hover a dot to inspect',
-      MAP_X, CANVAS_SIZE - 6);
+    p.fill('#5a7a8a');        // slightly brighter
+    p.textSize(13);           // was 8
+    p.textAlign(p.LEFT, p.BOTTOM);
+    p.text('Source: Yelp Open Dataset · Philadelphia restaurants · Hover a dot to inspect',
+  MAP_X, CANVAS_SIZE - 6);
   }
 
   // ── Helpers ──────────────────────────────────────────────
@@ -396,18 +401,18 @@ registerSketch('sk15', function (p) {
     return (h - 12) + ' PM';
   }
   function formatHourShort(h) {
-    if (h === 0)  return '12a';
-    if (h < 12)   return h + 'p';
-    if (h === 12) return '12p';
-    return (h - 12) + 'a';
+    if (h === 0)  return '12';
+    if (h < 12)   return String(h);
+    if (h === 12) return '12';
+    return String(h - 12);
   }
 
   // ── Mouse ────────────────────────────────────────────────
   p.mousePressed = function () {
     if (p.mouseX < 0 || p.mouseX > CANVAS_SIZE ||
         p.mouseY < 0 || p.mouseY > CANVAS_SIZE) return;
-    if (p.mouseY > DIAL_CY + DIAL_R + 4 && p.mouseY < DIAL_CY + DIAL_R + 26
-        && Math.abs(p.mouseX - DIAL_CX) < 40) {
+    if (p.mouseY > DIAL_CY + DIAL_R + 4 && p.mouseY < DIAL_CY + DIAL_R + 30
+        && Math.abs(p.mouseX - DIAL_CX) < 50) {
       playing = !playing; lastTick = p.millis(); return;
     }
     if (Math.hypot(p.mouseX - DIAL_CX, p.mouseY - DIAL_CY) < DIAL_R + 16) {
